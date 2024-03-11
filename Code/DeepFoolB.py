@@ -36,9 +36,6 @@ def deepfoolB(image, net, num_classes=10, overshoot=0.02, max_iter=50):
 
     f_image = net.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu().numpy().flatten()
 
-    # Decrypt output
-    f_image = kd.decryptKey(f_image)
-
     I = (np.array(f_image)).flatten().argsort()[::-1]
 
     I = I[0:num_classes]
