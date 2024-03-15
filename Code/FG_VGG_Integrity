@@ -1,0 +1,154 @@
+'''
+Modified in 4/4/2021 1:18
+Collect the efficiency result based on Google Net and DeepFool.
+Modification:
+    Adding scaling factor when modifying the CNN FC layer.
+    Checking the DeepFool performance
+
+'''
+
+
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision
+import torchvision.transforms as transforms
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+import torch.optim as optim
+import torch.utils.data as data_utils
+#from torch.autograd import Variable
+import math
+import torchvision.models as models
+from PIL import Image
+#from deepfool import deepfool
+import os
+import csv
+from ModelModify import ModifyModel,ModifyModelVGG, ModifyModelScale,ModifyModelVGGScale
+from DeepFoolC import deepfoolC
+from DeepFoolB import deepfoolB
+#import HeatMapForgradientOrPerturbation as HM   Remove. no use.
+#from HeatMapForgradientOrPerturbation import heatmap
+import cv2
+#from scipy.misc import imread, imsave, imresize
+from imageio.v2 import imread
+
+import KeyDecrypt as kd
+from torch.autograd import Variable
+
+Scale=20
+
+
+net = models.vgg19(weights='IMAGENET1K_V1').cuda()
+#net2 = models.resnet18(pretrained=True)
+# Switch to evaluation mode
+net.eval()
+'''
+net2 = models.resnet34(pretrained=True)
+#net2 = models.resnet18(pretrained=True)
+# Switch to evaluation mode
+net2.eval()
+'''
+
+net2 = models.vgg19(weights='IMAGENET1K_V1')
+net2= ModifyModelVGGScale(net2,Scale)
+net2.cuda()
+net2.eval()
+
+
+#
+AT="DeepFool"
+CSVfilenameTime ='VGG19'+'_'+ AT +"_"+str(Scale)+"_MethodB"+'_Result.csv'
+fileobjT = open(CSVfilenameTime, 'w', newline='')  # 
+# fileobj.write('\xEF\xBB\xBF')#
+# 
+writerT = csv.writer(fileobjT)  # csv.writer(fileobj)writer writer
+ValueTime=['Original ATT,GT','Original ATT, ATT','On Fake ATT, GT','On Fake ATT,ATT','On Fake ATT, Def','ACC','ACC_ALL','DL2R','DL2G','DL2B','DLIR','DLIG','DLIB','AL2R','AL2G','AL2B','ALIR','ALIG','ALIB']
+writerT.writerow(ValueTime)
+CountT=0        #deepfool
+CountTotal=0    #
+CountDF_EFF=0   #deepfool 
+CountDF_EFF_Def=0  #DeepFool
+
+Folder='C:/Users/longd/Documents/ImageNet/ILSVRC/Data/DET/test/'
+FileName='ILSVRC2016_test'
+Append='.JPEG'            #00099990
+Error=[]
+for i in range(1,10): # Number of tries
+    Index=str(i+1)
+    K=len(Index)
+    IndexFull='_'
+    for j in range(8-K):
+        IndexFull=IndexFull+str(0)
+    IndexFull=IndexFull+Index
+    FNAME=Folder+FileName+IndexFull+Append
+    #im_orig = Image.open('test_im2.jpg')
+
+    CC = cv2.imread(FNAME)
+    #print(im_orig.size)
+    a, b, c = CC.shape
+    #print(CC.shape, c)
+
+    image = imread(FNAME)
+    if (len(image.shape) < 3):
+        #print('gray')
+        continue
+    if c!=3:
+        continue
+
+    CountTotal=CountTotal+1
+
+    #im_orig = Image.open('test_im2.jpg')
+    #im_orig = Image.open('ILSVRC2012_test_00000002.JPEG')
+    mean = [ 0.485, 0.456, 0.406 ]
+    std = [ 0.229, 0.224, 0.225 ]
+    #im_origB = Image.open('ILSVRC2012_test_00000002.JPEG')
+    im_orig = Image.open(FNAME)
+    im_origB = Image.open(FNAME)
+
+    # Remove the mean
+    im = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean = mean,
+                             std = std)])(im_orig)
+    imB = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean = mean,
+                             std = std)])(im_origB)
+    #r, loop_i, label_orig, label_pert, pert_image = deepfool(im, net)
+    '''
+    f_image = net.forward(Variable(im[None, :, :, :], requires_grad=True)).data.cpu().numpy().flatten()
+    I = (np.array(f_image)).flatten().argsort()[::-1]
+    Originallabel = I[0]
+    '''
+
+    '''
+    r, loop_i, label_orig, label_pert, Originallabel,Protected,pert_image,TheGradient = deepfoolC(im, net2)
+    rB, loop_iB, label_origB, label_pertB, pert_imageB,TheGradientB = deepfoolB(imB, net)
+    '''
+    
+    im = im.cuda()
+    imB = imB.cuda()
+
+    netRes = net.forward(Variable(im[None, :, :, :], requires_grad=True)).data.cpu().numpy().flatten()
+    net2Res = net2.forward(Variable(imB[None, :, :, :], requires_grad=True)).data.cpu()
+    # Decrypt output
+    net2Res = kd.decryptKey(net2Res)
+    net2Res = net2Res.numpy().flatten()
+
+    comp = 0
+    for i in range(1000):
+        if (netRes[i] == net2Res[i]):
+            comp += 1
+
+    print(netRes[0],net2Res[0])
+    print(netRes[5],net2Res[5])
+
+    print("Total correct classifications: ", comp)
+    # Run and compare result between normal and fake gradient to verify integrity
+
+exit()

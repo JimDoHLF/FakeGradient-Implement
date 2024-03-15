@@ -33,23 +33,6 @@ import cv2
 #from scipy.misc import imread, imsave, imresize
 from imageio.v2 import imread
 
-# Unpickle the files
-import pickle
-
-def unpickle(file):
-    with open(file, 'rb') as fo:
-        dict = pickle.load(fo)
-    return dict
-
-def load_databatch(data_folder, idx, img_size=32):
-    data_file = os.path.join(data_folder, 'train_data_batch_')
-
-    d = unpickle(data_file + str(idx))
-    x = d['data']
-    y = d['labels']
-    mean_image = d['mean']
-
-
 Scale=20
 
 
