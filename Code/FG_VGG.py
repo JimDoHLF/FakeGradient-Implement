@@ -24,7 +24,7 @@ from PIL import Image
 #from deepfool import deepfool
 import os
 import csv
-from ModelModify import ModifyModel,ModifyModelVGG, ModifyModelScale,ModifyModelVGGScale
+from ModelModify import ModifyModelVGGScale
 from DeepFoolC import deepfoolC
 from DeepFoolB import deepfoolB
 #import HeatMapForgradientOrPerturbation as HM   Remove. no use.
@@ -47,11 +47,20 @@ net2 = models.resnet34(pretrained=True)
 net2.eval()
 '''
 
-net2 = models.vgg19(weights='IMAGENET1K_V1')
-net2= ModifyModelVGGScale(net2,Scale)
-net2.cuda()
-net2.eval()
+net2_1 = models.vgg19(weights='IMAGENET1K_V1')
+net2_1 = ModifyModelVGGScale(net2_1,Scale,0)
+net2_1.cuda()
+net2_1.eval()
 
+net2_2 = models.vgg19(weights='IMAGENET1K_V1')
+net2_2 = ModifyModelVGGScale(net2_2,Scale,1)
+net2_2.cuda()
+net2_2.eval()
+
+net2_3 = models.vgg19(weights='IMAGENET1K_V1')
+net2_3 = ModifyModelVGGScale(net2_3,Scale,2)
+net2_3.cuda()
+net2_3.eval()
 
 #
 AT="DeepFool"
@@ -122,7 +131,7 @@ for i in range(1,1000): # Number of tries
     I = (np.array(f_image)).flatten().argsort()[::-1]
     Originallabel = I[0]
     '''
-    r, loop_i, label_orig, label_pert, Originallabel,Protected,pert_image,TheGradient = deepfoolC(im, net2)
+    r, loop_i, label_orig, label_pert, Originallabel,Protected,pert_image,TheGradient = deepfoolC(im, net2_1, net2_2, net2_3)
     rB, loop_iB, label_origB, label_pertB, pert_imageB,TheGradientB = deepfoolB(imB, net)
     print("original:    ", Originallabel)
     print("original:    ", Protected)

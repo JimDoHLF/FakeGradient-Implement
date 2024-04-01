@@ -17,7 +17,7 @@ from Autograd import zero_gradients
 import KeyDecrypt as kd
 
 
-def deepfoolC(image, net, num_classes=10, overshoot=0.02, max_iter=50):
+def deepfoolC(image, net1, net2, net3, num_classes=10, overshoot=0.02, max_iter=50):
 
     """
        :param image: Image of size HxWx3
@@ -37,7 +37,11 @@ def deepfoolC(image, net, num_classes=10, overshoot=0.02, max_iter=50):
         print("Using CPU")
 
 
-    f_image = net.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
+    f_image1 = net1.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
+    f_image2 = net2.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
+    f_image3 = net3.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
+
+    f_image = torch.cat((f_image1, f_image2, f_image3),0)
 
     # Decrypt output
     f_image = kd.decryptKey(f_image)
