@@ -21,7 +21,7 @@ def deepfoolC(image, net1, net2, net3, num_classes=10, overshoot=0.02, max_iter=
 
     """
        :param image: Image of size HxWx3
-       :param net: network (input: images, output: values of activation **BEFORE** softmax).
+       :param net1, net2, net3: network (input: images, output: values of activation **BEFORE** softmax).
        :param num_classes: num_classes (limits the number of classes to test against, by default = 10)
        :param overshoot: used as a termination criterion to prevent vanishing updates (default = 0.02).
        :param max_iter: maximum number of iterations for deepfool (default = 50)
@@ -32,7 +32,9 @@ def deepfoolC(image, net1, net2, net3, num_classes=10, overshoot=0.02, max_iter=
     if is_cuda:
         print("Using GPU")
         image = image.cuda()
-        net = net.cuda()
+        net1 = net1.cuda()
+        net2 = net2.cuda()
+        net3 = net3.cuda()
     else:
         print("Using CPU")
 
@@ -41,7 +43,7 @@ def deepfoolC(image, net1, net2, net3, num_classes=10, overshoot=0.02, max_iter=
     f_image2 = net2.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
     f_image3 = net3.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
 
-    f_image = torch.cat((f_image1, f_image2, f_image3),0)
+    f_image = torch.cat((f_image1, f_image2, f_image3),1)
 
     # Decrypt output
     f_image = kd.decryptKey(f_image)
@@ -64,7 +66,10 @@ def deepfoolC(image, net1, net2, net3, num_classes=10, overshoot=0.02, max_iter=
     loop_i = 0
 
     x = Variable(pert_image[None, :], requires_grad=True)
-    fs = net.forward(x)
+    fs1 = net1.forward(x)
+    fs2 = net2.forward(x)
+    fs3 = net3.forward(x)
+    fs = torch.cat((fs1, fs2, fs3),1)
     fs_list = [fs[0,I[k]] for k in range(num_classes)]
     k_i = label
     CountFlag=0
@@ -108,7 +113,12 @@ def deepfoolC(image, net1, net2, net3, num_classes=10, overshoot=0.02, max_iter=
             pert_image = image + (1+overshoot)*torch.from_numpy(r_tot)
 
         x = Variable(pert_image, requires_grad=True)
-        fs = net.forward(x)
+
+        fs1 = net1.forward(x)
+        fs2 = net2.forward(x)
+        fs3 = net3.forward(x)
+        fs = torch.cat((fs1,fs2,fs3),1)
+
         k_i = np.argmax(fs.data.cpu().numpy().flatten())
         Protected = np.argmax(fs.data.cpu().numpy().flatten()[0:1000])
 

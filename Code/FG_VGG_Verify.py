@@ -33,6 +33,9 @@ import cv2
 #from scipy.misc import imread, imsave, imresize
 from imageio.v2 import imread
 
+import KeyDecrypt as kd
+from torch.autograd import Variable
+
 Scale=20
 
 
@@ -79,7 +82,7 @@ Folder='C:/Users/longd/Documents/ImageNet/ILSVRC/Data/DET/test/'
 FileName='ILSVRC2016_test'
 Append='.JPEG'            #00099990
 Error=[]
-for i in range(1,1000): # Number of tries
+for i in range(1,2): # Number of tries
     Index=str(i+1)
     K=len(Index)
     IndexFull='_'
@@ -130,6 +133,7 @@ for i in range(1,1000): # Number of tries
     I = (np.array(f_image)).flatten().argsort()[::-1]
     Originallabel = I[0]
     '''
+    '''
     r, loop_i, label_orig, label_pert, Originallabel,Protected,pert_image,TheGradient = deepfoolC(im, net2_1, net2_2, net2_3)
     rB, loop_iB, label_origB, label_pertB, pert_imageB,TheGradientB = deepfoolB(imB, net)
     print("original:    ", Originallabel)
@@ -149,7 +153,37 @@ for i in range(1,1000): # Number of tries
         CountT=CountT+1
         AccB=1
     print("Efficiency: ===>", int(CountT*100/CountTotal))
+    '''
+
+    image = im.cuda()
+    net = net.cuda()
+    net2_1 = net2_1.cuda()
+    net2_2 = net2_2.cuda()
+    net2_3 = net2_3.cuda()
+
+    f_image_original = net.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu().numpy().flatten()
+
+    f_image1 = net2_1.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
+    f_image2 = net2_2.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
+    f_image3 = net2_3.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
+
+    f_image_fg = torch.cat((f_image1, f_image2, f_image3),1)
+    f_image_fg = f_image1
+
+    # Decrypt output
+    #f_image_fg = kd.decryptKey(f_image_fg)
+
+    f_image_fg = f_image_fg.numpy().flatten()
     #L2 and Linfinity
+    
+    match = 0
+    for i in range (1000):
+        if (f_image_original[i] == f_image_fg[i]):
+            match += 1
+            print(f_image_original[i])
+
+    print(match)
+    
 
     """
     # get the perturbation and the gradient based on the defence one
@@ -187,10 +221,6 @@ for i in range(1,1000): # Number of tries
     """
 
 
-
-print("Final Result:   ",CountT,CountTotal,CountDF_EFF,CountDF_EFF_Def)
-ValueTime=[CountT,CountTotal,CountDF_EFF,CountDF_EFF_Def,int(CountT*100/CountTotal)]
-writerT.writerow(ValueTime)
 exit()
 
 def clip_tensor(A, minv, maxv):

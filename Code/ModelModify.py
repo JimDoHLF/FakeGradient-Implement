@@ -16,7 +16,7 @@ import AnalysisWeight as AW
 
 import KeyDecrypt as kd
 
-def ModifyModelVGGScale(net1,Scale,index):
+def ModifyModelVGGScale(net1,net2,net3,Scale):
     '''
         VGG modification
     '''
@@ -25,6 +25,7 @@ def ModifyModelVGGScale(net1,Scale,index):
     TTA=net1.classifier[3].weight
     print(TTA.shape)
     TTB=net1.classifier[6].weight
+    print(TTB.shape)
     BiaB=net1.classifier[6].bias
     print(BiaB.shape)
     #exit()
@@ -59,9 +60,26 @@ def ModifyModelVGGScale(net1,Scale,index):
             #WSaveB[i][j]=(WeightMax-WSaveB[i][j])*Scale
 
     OutL=4095 # 3 character Hex
-    net1.classifier[6]=nn.Linear(in_features=c, out_features=OutL, bias=True)
-    NewWeight=net1.classifier[6].weight
-    NewBias=net1.classifier[6].bias
+    print(c)
+
+    # copy the weight and bias
+    #wb = torch.clone(net1.classifier[6].weight)
+    #bb = torch.clone(net1.classifier[6].bias)
+
+    base = nn.Linear(in_features=c, out_features=OutL, bias=True)
+    wb = base.weight
+    bb = base.bias
+
+    net1.classifier[6]=nn.Linear(in_features=c, out_features=1365, bias=True)
+    w1=net1.classifier[6].weight
+    b1=net1.classifier[6].bias
+    net2.classifier[6]=nn.Linear(in_features=c, out_features=1365, bias=True)
+    w2=net2.classifier[6].weight
+    b2=net2.classifier[6].bias
+    net3.classifier[6]=nn.Linear(in_features=c, out_features=1365, bias=True)
+    w3=net3.classifier[6].weight
+    b3=net3.classifier[6].bias
+
     print(r,c)
     print(TTB.shape)
     U=TTB[0][0].clone()
@@ -73,28 +91,62 @@ def ModifyModelVGGScale(net1,Scale,index):
         for i in range(r):
             for j in range(c):
                 TMP=WSave[i][j].copy()
-                NewWeight[i][j]=TMP
+                wb[i][j]=TMP
 
     print("======2--------------")
     with torch.no_grad():
         for i in range(r):
             for j in range(c):
                 TMP = WSaveB[i][j].copy()
-                NewWeight[i+r][j]=TMP
+                wb[i+r][j]=TMP
     print("======3--------------")
     with torch.no_grad():
         for i in range(r):
             #BSave[0][i]=BiaB[i].clone()
             TMP=BSave[0][i].copy()
             TMPB = BSaveB[0][i].copy()
-            NewBias[i]=TMP
-            NewBias[i+r] =TMPB
+            bb[i]=TMP
+            bb[i+r] =TMPB
     print("======4--------------")
-    with torch.no_grad():
-        w,b = kd.encryptKey(NewWeight,NewBias)
+    #with torch.no_grad():
+        #wb,bb = kd.encryptKey(wb,bb)
     print("======5--------------")
     with torch.no_grad():
         # Split gradient
-        w = w[index * 1365 : index * 1365 + 1365]
+        w1, w2, w3 = torch.split(wb, 1365, 0)
+        b1, b2, b3 = torch.split(bb, 1365, 0)
+    print("======6--------------")
+    with torch.no_grad():
+        net1.classifier[6].weight = nn.Parameter(w1)
+        net2.classifier[6].weight = nn.Parameter(w2)
+        net3.classifier[6].weight = nn.Parameter(w3)
+        net1.classifier[6].bias = nn.Parameter(b1)
+        net2.classifier[6].bias = nn.Parameter(b2)
+        net3.classifier[6].bias = nn.Parameter(b3)
     #exit()
-    return net1
+
+    # Verify integrity
+    wMatch = 0
+    for i in range(1000):
+        for n in range(4096):
+            if (net1.classifier[6].weight[i][n] == wb[i][n]):
+                wMatch += 1
+    print("Total weight match:")
+    print(wMatch)
+    print("Required weight match:")
+    print(4096 * 1000)
+    print("Weight Verification:")
+    print(wMatch == (4096 * 1000))
+    bMatch = 0
+    for i in range(1000):
+        if (net1.classifier[6].bias[i] == bb[i]):
+            bMatch += 1
+    print("Total bias match:")
+    print(bMatch)
+    print("Required bias match:")
+    print(1000)
+    print("Weight Verification:")
+    print(bMatch == 1000)
+    print("---------------")
+
+    return net1, net2, net3
