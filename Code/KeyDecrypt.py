@@ -23,7 +23,7 @@ def getKey64():
 
 def encryptKey(weight, bias):
     key32 = torch.transpose(getKey32(), dim0=0, dim1=1)
-    key64 = torch.transpose(getKey64(), dim0=0, dim1=1)
+    #key64 = torch.transpose(getKey64(), dim0=0, dim1=1)
     w = torch.matmul(key32, weight)
     b = torch.matmul(bias, key32)
     return w, b

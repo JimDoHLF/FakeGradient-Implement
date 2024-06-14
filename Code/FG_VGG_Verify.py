@@ -82,7 +82,7 @@ Folder='C:/Users/longd/Documents/ImageNet/ILSVRC/Data/DET/test/'
 FileName='ILSVRC2016_test'
 Append='.JPEG'            #00099990
 Error=[]
-for i in range(1,2): # Number of tries
+for i in range(1,5): # Number of tries
     Index=str(i+1)
     K=len(Index)
     IndexFull='_'
@@ -155,35 +155,42 @@ for i in range(1,2): # Number of tries
     print("Efficiency: ===>", int(CountT*100/CountTotal))
     '''
 
+    #"""
+    r, loop_i, label_orig, label_pert, Originallabel,Protected,pert_image,TheGradient = deepfoolC(im, net2_1, net2_2, net2_3)
+    rB, loop_iB, label_origB, label_pertB, pert_imageB,TheGradientB = deepfoolB(imB, net)
+
+    print(Protected)
+    print(Originallabel)
+    print(label_origB)
+    #"""
+
+    """
     image = im.cuda()
     net = net.cuda()
     net2_1 = net2_1.cuda()
     net2_2 = net2_2.cuda()
     net2_3 = net2_3.cuda()
 
-    f_image_original = net.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu().numpy().flatten()
-
-    f_image1 = net2_1.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
-    f_image2 = net2_2.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
-    f_image3 = net2_3.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
-
-    f_image_fg = torch.cat((f_image1, f_image2, f_image3),1)
-    f_image_fg = f_image1
-
-    # Decrypt output
-    #f_image_fg = kd.decryptKey(f_image_fg)
-
-    f_image_fg = f_image_fg.numpy().flatten()
-    #L2 and Linfinity
+    fimage_o = net.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu().numpy().flatten()
     
+    fimage1 = net2_1.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
+    fimage2 = net2_2.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
+    fimage3 = net2_3.forward(Variable(image[None, :, :, :], requires_grad=True)).data.cpu()
+
+    fimage_fg = torch.cat((fimage1,fimage2,fimage3),1).flatten()
+    fimage_fg = kd.decryptKey(fimage_fg).numpy().flatten()
+    fimage_fg = fimage_fg[0:1000]
+
+    fimage_o = fimage_o.argsort()[::-1]
+    fimage_fg = fimage_fg.argsort()[::-1]
+
     match = 0
     for i in range (1000):
-        if (f_image_original[i] == f_image_fg[i]):
+        if (fimage_o[i] == fimage_fg[i]):
             match += 1
-            print(f_image_original[i])
 
-    print(match)
-    
+    print (match)
+    """
 
     """
     # get the perturbation and the gradient based on the defence one

@@ -46,11 +46,12 @@ net2 = models.resnet34(pretrained=True)
 # Switch to evaluation mode
 net2.eval()
 '''
-
+net1 = models.vgg19(weights='IMAGENET1K_V1')
+net2 = models.vgg19(weights='IMAGENET1K_V1')
 net2_1 = models.vgg19(weights='IMAGENET1K_V1')
 net2_2 = models.vgg19(weights='IMAGENET1K_V1')
 net2_3 = models.vgg19(weights='IMAGENET1K_V1')
-net2_1, net2_2, net2_3 = ModifyModelVGGScale(net2_1, net2_2, net2_3,Scale)
+net2, net2_1, net2_2, net2_3 = ModifyModelVGGScale(net2, net2_1, net2_2, net2_3,Scale)
 
 net2_1.cuda()
 net2_1.eval()
@@ -79,7 +80,7 @@ Folder='C:/Users/longd/Documents/ImageNet/ILSVRC/Data/DET/test/'
 FileName='ILSVRC2016_test'
 Append='.JPEG'            #00099990
 Error=[]
-for i in range(1,1000): # Number of tries
+for i in range(1,10): # Number of tries
     Index=str(i+1)
     K=len(Index)
     IndexFull='_'
@@ -130,7 +131,7 @@ for i in range(1,1000): # Number of tries
     I = (np.array(f_image)).flatten().argsort()[::-1]
     Originallabel = I[0]
     '''
-    r, loop_i, label_orig, label_pert, Originallabel,Protected,pert_image,TheGradient = deepfoolC(im, net2_1, net2_2, net2_3)
+    r, loop_i, label_orig, label_pert, Originallabel,Protected,pert_image,TheGradient = deepfoolC(im, net2, net2_1, net2_2, net2_3)
     rB, loop_iB, label_origB, label_pertB, pert_imageB,TheGradientB = deepfoolB(imB, net)
     print("original:    ", Originallabel)
     print("original:    ", Protected)

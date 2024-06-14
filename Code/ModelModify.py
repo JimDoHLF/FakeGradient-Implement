@@ -16,21 +16,21 @@ import AnalysisWeight as AW
 
 import KeyDecrypt as kd
 
-def ModifyModelVGGScale(net1,net2,net3,Scale):
+def ModifyModelVGGScale(net,net1,net2,net3,Scale):
     '''
         VGG modification
     '''
-    TT=net1.classifier[0].weight
+    TT=net.classifier[0].weight
     print(TT.shape)
-    TTA=net1.classifier[3].weight
+    TTA=net.classifier[3].weight
     print(TTA.shape)
-    TTB=net1.classifier[6].weight
+    TTB=net.classifier[6].weight
     print(TTB.shape)
-    BiaB=net1.classifier[6].bias
+    BiaB=net.classifier[6].bias
     print(BiaB.shape)
     #exit()
 
-    # save biase and weight
+    # save bias and weight
     r,c=TTB.shape
     BSave=np.zeros((1,r))
     for i in range(r):
@@ -60,23 +60,18 @@ def ModifyModelVGGScale(net1,net2,net3,Scale):
             #WSaveB[i][j]=(WeightMax-WSaveB[i][j])*Scale
 
     OutL=4095 # 3 character Hex
-    print(c)
 
-    # copy the weight and bias
-    #wb = torch.clone(net1.classifier[6].weight)
-    #bb = torch.clone(net1.classifier[6].bias)
+    net.classifier[6] = nn.Linear(in_features=c, out_features=OutL, bias=True)
+    wb = net.classifier[6].weight
+    bb = net.classifier[6].bias
 
-    base = nn.Linear(in_features=c, out_features=OutL, bias=True)
-    wb = base.weight
-    bb = base.bias
-
-    net1.classifier[6]=nn.Linear(in_features=c, out_features=1365, bias=True)
+    net1.classifier[6]=nn.Linear(in_features=c, out_features=int(OutL/3), bias=True)
     w1=net1.classifier[6].weight
     b1=net1.classifier[6].bias
-    net2.classifier[6]=nn.Linear(in_features=c, out_features=1365, bias=True)
+    net2.classifier[6]=nn.Linear(in_features=c, out_features=int(OutL/3), bias=True)
     w2=net2.classifier[6].weight
     b2=net2.classifier[6].bias
-    net3.classifier[6]=nn.Linear(in_features=c, out_features=1365, bias=True)
+    net3.classifier[6]=nn.Linear(in_features=c, out_features=int(OutL/3), bias=True)
     w3=net3.classifier[6].weight
     b3=net3.classifier[6].bias
 
@@ -92,37 +87,37 @@ def ModifyModelVGGScale(net1,net2,net3,Scale):
             for j in range(c):
                 TMP=WSave[i][j].copy()
                 wb[i][j]=TMP
-
-    print("======2--------------")
-    with torch.no_grad():
-        for i in range(r):
+        """
+        for i in range(OutL - r):
             for j in range(c):
                 TMP = WSaveB[i][j].copy()
                 wb[i+r][j]=TMP
+        """
     print("======3--------------")
     with torch.no_grad():
         for i in range(r):
             #BSave[0][i]=BiaB[i].clone()
             TMP=BSave[0][i].copy()
-            TMPB = BSaveB[0][i].copy()
             bb[i]=TMP
+        """
+        for i in range(OutL - r):
+            TMPB = BSaveB[0][i].copy()
             bb[i+r] =TMPB
+        """
+
     print("======4--------------")
-    #with torch.no_grad():
-        #wb,bb = kd.encryptKey(wb,bb)
-    print("======5--------------")
     with torch.no_grad():
+        wb,bb = kd.encryptKey(wb,bb)
         # Split gradient
         w1, w2, w3 = torch.split(wb, 1365, 0)
         b1, b2, b3 = torch.split(bb, 1365, 0)
-    print("======6--------------")
-    with torch.no_grad():
-        net1.classifier[6].weight = nn.Parameter(w1)
-        net2.classifier[6].weight = nn.Parameter(w2)
-        net3.classifier[6].weight = nn.Parameter(w3)
-        net1.classifier[6].bias = nn.Parameter(b1)
-        net2.classifier[6].bias = nn.Parameter(b2)
-        net3.classifier[6].bias = nn.Parameter(b3)
+        net1.classifier[6].weight = nn.Parameter(w1,False)
+        net2.classifier[6].weight = nn.Parameter(w2,False)
+        net3.classifier[6].weight = nn.Parameter(w3,False)
+        net1.classifier[6].bias = nn.Parameter(b1,False)
+        net2.classifier[6].bias = nn.Parameter(b2,False)
+        net3.classifier[6].bias = nn.Parameter(b3,False)
+    print("======5--------------")
     #exit()
 
     # Verify integrity
@@ -149,4 +144,4 @@ def ModifyModelVGGScale(net1,net2,net3,Scale):
     print(bMatch == 1000)
     print("---------------")
 
-    return net1, net2, net3
+    return net, net1, net2, net3
